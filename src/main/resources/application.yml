@@ -1,0 +1,5 @@
+server:
+  port: 8014
+#  申请的apikey 填写到这里
+constants:
+  apiKey:
