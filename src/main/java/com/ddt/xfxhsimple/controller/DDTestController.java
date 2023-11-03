@@ -1,9 +1,20 @@
 package com.ddt.xfxhsimple.controller;
 
 import cn.hutool.core.util.StrUtil;
+import com.alibaba.dashscope.aigc.generation.Generation;
+import com.alibaba.dashscope.aigc.generation.GenerationOutput;
+import com.alibaba.dashscope.aigc.generation.GenerationResult;
+import com.alibaba.dashscope.aigc.generation.models.QwenParam;
+import com.alibaba.dashscope.common.Message;
+import com.alibaba.dashscope.common.MessageManager;
+import com.alibaba.dashscope.common.Role;
+import com.alibaba.dashscope.exception.ApiException;
+import com.alibaba.dashscope.exception.InputRequiredException;
+import com.alibaba.dashscope.exception.NoApiKeyException;
+import com.alibaba.dashscope.utils.Constants;
 import com.ddt.xfxhsimple.thread.DdtThread;
-import com.ddt.xfxhsimple.utils.JedisPoolUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import redis.clients.jedis.Jedis;
 
@@ -15,18 +26,18 @@ import java.util.concurrent.FutureTask;
 @RequestMapping("/test")
 @Slf4j
 public class DDTestController {
+    @Value("${constants.apiKey}")
+    private String apiKey;
 
     @PostMapping("/question")
     public Map<String, Object> flow(@RequestBody Map<String, Object> tokenMap) throws Exception {
-        String asrAddr = "127.0.0.1:9988";
-        String ttsAddr = "ws://127.0.0.1:9989/tts";
+        String asrAddr = "129.211.24.206:9988";
+        String ttsAddr = "ws://129.211.24.206:9989/tts";
         Long timestamp = (Long) tokenMap.get("timestamp");
         String method = (String) tokenMap.get("method");
         String callid = (String) tokenMap.get("callid");
         String appid = (String) tokenMap.get("appid");
         Map<String, Object> resultMap = new HashMap<>();
-        JedisPoolUtils jedisPoolUtils = new JedisPoolUtils();
-        Jedis jedis = jedisPoolUtils.getJedis();
         if ("create".equals(method)) {
             String callSource = (String) tokenMap.get("call_source");
             log.info("callSource ===>{}", callSource);
@@ -68,28 +79,13 @@ public class DDTestController {
                     resultMap.put("action", "hangup");
                     resultMap.put("log", "挂机");
                 } else {
-                    if(null!=jedis.get("question")){
-                        //线程一
-                        DdtThread mc = new DdtThread(jedis.get("question"));
-                        // 4.创建一个FutureTask对象, 把MyCallable绑定到未来任务对象中
-                        FutureTask<String> task = new FutureTask<>(mc);
-                        // 5.把未来任务对象绑定到Thread类中
-                        Thread t = new Thread(task);
-                        t.start();
-                        //回答的问题转语音
-                        String str = task.get();
-                        resultMap.put("action", "cti_play_and_detect_speech");
-                        String date = LocalDateTime.now().toString();
-                        resultMap.put("argument", "'1' '1' '0' '0.8' '" + asrAddr + "' '120' '800' '5000' '20000' '' '' '" + appid + "' '1' '" + date + "' 'wav'");
-                        resultMap.put("privatedata", "test");
-                        resultMap.put("playbacks", Collections.singletonList(str));
-                        resultMap.put("quickresponse", true);
-                        resultMap.put("log", "重新开始放音");
-                        //将缓存清空
-                        jedis.del("question");
-                    }else{
-
-                    }
+                    resultMap.put("action", "cti_play_and_detect_speech");
+                    String date = LocalDateTime.now().toString();
+                    resultMap.put("argument", "'1' '1' '0' '0.8' '" + asrAddr + "' '120' '800' '5000' '20000' '' '' '" + appid + "' '1' '" + date + "' 'wav'");
+                    resultMap.put("privatedata", "test");
+                    resultMap.put("playbacks", Collections.singletonList("您可以继续向我提问"));
+                    resultMap.put("quickresponse", true);
+                    resultMap.put("log", "重新开始放音");
                 }
             } else {
                 String prefix = StrUtil.sub(input_args, 0, 1);
@@ -111,14 +107,13 @@ public class DDTestController {
                     }
                     else{
                         if(0<play_progress&&text.length()>3||0==play_progress){
-                            jedis.set("question", text);
-                            System.err.println(jedis.get("question"));
+                            String str = callWithMessage(text,apiKey);
                             resultMap.put("action", "cti_play_and_detect_speech");
                             String date = LocalDateTime.now().toString();
-                            resultMap.put("argument", "'1' '1' '0' '0.8' '" + asrAddr + "' '120' '800' '5000' '20000' '' '' '" + appid + "' '1' '" + date + "' 'wav'");
+                            resultMap.put("argument", "'0' '1' '0' '0.8' '" + asrAddr + "' '120' '800' '5000' '20000' '' '' '" + appid + "' '1' '" + date + "' 'wav'");
                             resultMap.put("privatedata", "test");
                             //回答的问题转语音
-                            resultMap.put("playbacks", Collections.singletonList("查询中请稍后"));
+                            resultMap.put("playbacks", Collections.singletonList(str));
                             resultMap.put("quickresponse", true);
                             resultMap.put("log", "播放识别结果");
                         }
@@ -141,7 +136,25 @@ public class DDTestController {
         }
         return resultMap;
     }
-
+    public  String callWithMessage( String text,String apiKey) throws NoApiKeyException, ApiException, InputRequiredException {
+        Constants.apiKey = apiKey;
+        Generation gen = new Generation();
+        MessageManager msgManager = new MessageManager(10);
+        Message userMsg = Message.builder().role(Role.USER.getValue()).content(text).build();
+        msgManager.add(userMsg);
+        QwenParam param = QwenParam.builder().model(Generation.Models.QWEN_TURBO).messages(msgManager.get())
+                .resultFormat(QwenParam.ResultFormat.MESSAGE)
+                .topP(0.8)
+                .enableSearch(true)
+                .build();
+        GenerationResult result = gen.call(param);
+        if("".equals(result.getOutput().getChoices().get(0))){
+            return "";
+        }else {
+            GenerationOutput.Choice choice = result.getOutput().getChoices().get(0);
+            return choice.getMessage().getContent();
+        }
+    }
 
 
 }

@@ -44,7 +44,7 @@ public class DdtThread implements Callable<String> {
     @Value("${constants.apiKey}")
     private String apiKey;
     public  String callWithMessage( String text) throws NoApiKeyException, ApiException, InputRequiredException {
-        Constants.apiKey = "";//这里需要填写apikey
+        Constants.apiKey = "";
         Generation gen = new Generation();
         MessageManager msgManager = new MessageManager(10);
         Message userMsg = Message.builder().role(Role.USER.getValue()).content(text).build();
