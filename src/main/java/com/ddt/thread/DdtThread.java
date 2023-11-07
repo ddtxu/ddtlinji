@@ -1,4 +1,4 @@
-package com.ddt.xfxhsimple.thread;
+package com.ddt.thread;
 
 
 import com.alibaba.dashscope.aigc.generation.Generation;

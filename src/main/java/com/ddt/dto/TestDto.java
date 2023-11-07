@@ -1,4 +1,4 @@
-package com.ddt.xfxhsimple.dto;
+package com.ddt.dto;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;

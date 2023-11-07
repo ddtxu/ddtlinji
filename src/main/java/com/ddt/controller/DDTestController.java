@@ -1,4 +1,4 @@
-package com.ddt.xfxhsimple.controller;
+package com.ddt.controller;
 
 import cn.hutool.core.util.StrUtil;
 import com.alibaba.dashscope.aigc.generation.Generation;
@@ -12,7 +12,6 @@ import com.alibaba.dashscope.exception.ApiException;
 import com.alibaba.dashscope.exception.InputRequiredException;
 import com.alibaba.dashscope.exception.NoApiKeyException;
 import com.alibaba.dashscope.utils.Constants;
-import com.ddt.xfxhsimple.thread.DdtThread;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
@@ -20,7 +19,6 @@ import redis.clients.jedis.Jedis;
 
 import java.time.LocalDateTime;
 import java.util.*;
-import java.util.concurrent.FutureTask;
 
 @RestController
 @RequestMapping("/test")
