@@ -31,8 +31,8 @@ public class DDTestController {
 
     @PostMapping("/question")
     public Map<String, Object> flow(@RequestBody Map<String, Object> tokenMap) throws Exception {
-        String asrAddr = "129.211.24.206:9988";
-        String ttsAddr = "ws://129.211.24.206:9989/tts";
+        String asrAddr = "127.0.0.1:9988";
+        String ttsAddr = "ws://127.0.0.1:9989/tts";
         Long timestamp = (Long) tokenMap.get("timestamp");
         String method = (String) tokenMap.get("method");
         String callid = (String) tokenMap.get("callid");
